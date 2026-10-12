@@ -1,0 +1,6 @@
+# Build output
+/build/
+# layer-shell-qt is cloned and built by scripts/build.sh
+/third_party/layer-shell-qt/
+/third_party/install/
+*.qm
