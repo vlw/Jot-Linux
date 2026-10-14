@@ -42,11 +42,11 @@ jobs:
           ninja -C build-wayland
           sudo ninja -C build-wayland install
           sudo ldconfig
-          git clone https://invent.kde.org/frameworks/extra-cmake-modules.git build-ecm-source
+          git clone --depth 1 --branch v6.26.0 https://github.com/KDE/extra-cmake-modules.git build-ecm-source
           git -C build-ecm-source checkout --detach a1dac86d6c848473d840b748b82694ef6916a3ca
           cmake -S build-ecm-source -B build-ecm -G Ninja -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/ecm" -DBUILD_TESTING=OFF
           cmake --install build-ecm
-          git clone https://invent.kde.org/plasma/layer-shell-qt.git third_party/layer-shell-qt
+          git clone --depth 1 --branch v6.7.5 https://github.com/KDE/layer-shell-qt.git third_party/layer-shell-qt
           git -C third_party/layer-shell-qt checkout --detach f18f51d5abe59e55a338d953acf8fd169a3d7d1d
           echo "ECM_DIR=$RUNNER_TEMP/ecm/share/ECM/cmake" >> "$GITHUB_ENV"
       - name: Build
