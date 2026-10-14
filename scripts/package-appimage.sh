@@ -61,6 +61,8 @@ export EXTRA_QT_MODULES='sql;multimedia;svg;waylandclient'
 mkdir -p "$APPDIR/usr/bin/plugins/wayland-shell-integration"
 cp "$APPDIR/usr/plugins/wayland-shell-integration/liblayer-shell.so" "$APPDIR/usr/bin/plugins/wayland-shell-integration/"
 cd "$ROOT/dist"
-export OUTPUT="Jot-Linux-$(git -C "$ROOT" rev-parse --short HEAD)-x86_64.AppImage"
+VERSION="$(sed -nE 's/^project\(jot-linux VERSION ([0-9]+\.[0-9]+\.[0-9]+) .*/\1/p' "$ROOT/CMakeLists.txt")"
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Cannot determine application version" >&2; exit 1; }
+export OUTPUT="Jot-Linux-$VERSION-x86_64.AppImage"
 "$TOOLS/linuxdeploy-x86_64.AppImage" --appdir "$APPDIR" --output appimage
 sha256sum "$OUTPUT" > "$OUTPUT.sha256"
