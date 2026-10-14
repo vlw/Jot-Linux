@@ -132,19 +132,19 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           images=(dist/*.AppImage)
-          image="$(basename "${images[0]}")"
+          if [[ "$RELEASE_TAG" == "v1.0.0" ]]; then
+            release_intro="Первая версия Jot для Linux."
+          else
+            release_intro="Jot для Linux $RELEASE_TAG."
+          fi
           cat > "$RUNNER_TEMP/release-notes.md" <<EOF
-          Jot for Linux — x86_64 AppImage.
+          $release_intro
 
-          Download the AppImage, its SHA-256 checksum and Sigstore provenance bundle.
-          Verify before running (requires a recent GitHub CLI):
+          Диктовка через Gemini: удерживайте клавишу, говорите и отпускайте - распознанный текст появится в активном окне.
 
-          \`\`\`bash
-          sha256sum --check $image.sha256
-          gh attestation verify $image --repo $GH_REPO --bundle $image.sigstore.json --signer-workflow $GH_REPO/.github/workflows/appimage.yml
-          chmod +x $image
-          ./$image
-          \`\`\`
+          Приложение создано для KDE Plasma и Wayland. Поддерживает русский и английский интерфейс, историю диктовок и пользовательский словарь.
+
+          Для запуска скачайте AppImage из файлов ниже. Инструкции по настройке и проверке сборки - в README.
           EOF
           # Stage all assets before publishing; reruns can resume an incomplete draft.
           if gh release view "$RELEASE_TAG" --json isDraft > "$RUNNER_TEMP/release-state.json"; then
