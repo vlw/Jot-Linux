@@ -1,0 +1,160 @@
+name: Verified AppImage
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: appimage-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson libffi-dev libexpat1-dev
+          sudo apt-get install -y ninja-build pkg-config libwayland-dev wayland-protocols libxkbcommon-dev libevdev-dev libflac-dev libgl1-mesa-dev libegl1-mesa-dev libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-render-util0 libxcb-image0 libxcb-randr0 libxcb-xkb1 libxkbcommon-x11-0 libasound2-dev libpulse-dev libopengl0 libfuse2t64 desktop-file-utils
+      - name: Install Qt 6.12
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: '6.12.0'
+          modules: 'qtmultimedia qtwebsockets qtshadertools'
+          cache: false
+      - name: Build pinned KDE dependencies
+        run: |
+          curl --fail --location --retry 3 https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.24.0/downloads/wayland-1.24.0.tar.xz -o wayland.tar.xz
+          echo '82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536  wayland.tar.xz' | sha256sum --check -
+          tar -xf wayland.tar.xz
+          meson setup build-wayland wayland-1.24.0 --prefix=/usr/local --libdir=lib -Ddocumentation=false -Dtests=false
+          ninja -C build-wayland
+          sudo ninja -C build-wayland install
+          sudo ldconfig
+          git clone https://invent.kde.org/frameworks/extra-cmake-modules.git build-ecm-source
+          git -C build-ecm-source checkout --detach a1dac86d6c848473d840b748b82694ef6916a3ca
+          cmake -S build-ecm-source -B build-ecm -G Ninja -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/ecm" -DBUILD_TESTING=OFF
+          cmake --install build-ecm
+          git clone https://invent.kde.org/plasma/layer-shell-qt.git third_party/layer-shell-qt
+          git -C third_party/layer-shell-qt checkout --detach f18f51d5abe59e55a338d953acf8fd169a3d7d1d
+          echo "ECM_DIR=$RUNNER_TEMP/ecm/share/ECM/cmake" >> "$GITHUB_ENV"
+      - name: Build
+        env:
+          QT_PREFIX: ${{ env.QT_ROOT_DIR }}
+          CMAKE_BUILD_PARALLEL_LEVEL: '2'
+        run: ./scripts/build.sh
+      - name: Package AppImage
+        env:
+          QT_PREFIX: ${{ env.QT_ROOT_DIR }}
+        run: ./scripts/package-appimage.sh
+      - name: Verify packaged application
+        run: |
+          mv "$QT_ROOT_DIR" "$QT_ROOT_DIR.disabled"
+          mv third_party/install third_party/install.disabled
+          mv build/plugins build/plugins.disabled
+          ./scripts/verify-appimage.sh dist/*.AppImage
+      - name: Attest build provenance
+        id: provenance
+        if: github.event_name != 'pull_request'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: dist/*.AppImage
+      - name: Save provenance bundle
+        if: github.event_name != 'pull_request'
+        env:
+          BUNDLE_PATH: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          images=(dist/*.AppImage)
+          cp "$BUNDLE_PATH" "${images[0]}.sigstore.json"
+      - name: Verify attestation
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          images=(dist/*.AppImage)
+          gh attestation verify "${images[0]}" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/appimage.yml"
+          gh attestation verify "${images[0]}" --repo "$GITHUB_REPOSITORY" \
+            --bundle "${images[0]}.sigstore.json" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/appimage.yml" \
+            --source-digest "$GITHUB_SHA"
+      - name: Upload AppImage and checksum
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Jot-Linux-x86_64-${{ github.sha }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      attestations: read
+      actions: read
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: Jot-Linux-x86_64-${{ github.sha }}
+          path: dist
+      - name: Verify release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          cd dist
+          images=(*.AppImage)
+          test "${#images[@]}" -eq 1
+          test -f "${images[0]}"
+          sha256sum --check "${images[0]}.sha256"
+          gh attestation verify "${images[0]}" --repo "$GH_REPO" \
+            --bundle "${images[0]}.sigstore.json" \
+            --signer-workflow "$GH_REPO/.github/workflows/appimage.yml" \
+            --source-digest "$SOURCE_SHA"
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          images=(dist/*.AppImage)
+          image="$(basename "${images[0]}")"
+          cat > "$RUNNER_TEMP/release-notes.md" <<EOF
+          Jot for Linux — x86_64 AppImage.
+
+          Download the AppImage, its SHA-256 checksum and Sigstore provenance bundle.
+          Verify before running (requires a recent GitHub CLI):
+
+          \`\`\`bash
+          sha256sum --check $image.sha256
+          gh attestation verify $image --repo $GH_REPO --bundle $image.sigstore.json --signer-workflow $GH_REPO/.github/workflows/appimage.yml
+          chmod +x $image
+          ./$image
+          \`\`\`
+          EOF
+          # Stage all assets before publishing; reruns can resume an incomplete draft.
+          if gh release view "$RELEASE_TAG" --json isDraft > "$RUNNER_TEMP/release-state.json"; then
+            if ! jq -e '.isDraft' "$RUNNER_TEMP/release-state.json" >/dev/null; then
+              echo "Release already published; preserving its assets."
+              exit 0
+            fi
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft \
+              --title "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
+          gh release upload "$RELEASE_TAG" "${images[0]}" "${images[0]}.sha256" "${images[0]}.sigstore.json" --clobber
+          gh release edit "$RELEASE_TAG" --draft=false

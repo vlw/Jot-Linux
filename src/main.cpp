@@ -12,6 +12,7 @@
 #include "platform/HotkeyEngine.h"
 #include "platform/WaylandIntegration.h"
 #include "ui/Backend.h"
+#include "ui/IconProvider.h"
 
 #include <QApplication>
 #include <QDBusConnection>
@@ -22,6 +23,8 @@
 #include <QFontDatabase>
 #include <QLoggingCategory>
 #include <QQmlEngine>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QUrl>
@@ -99,6 +102,24 @@ int main(int argc, char *argv[])
     QApplication::setWindowIcon(QIcon(":/icons/jot.png"));
 
     const QStringList args = app.arguments().mid(1);
+    if (args.contains("--smoke-test")) {
+        jot::Language::instance().apply();
+        jot::DictationController controller(&app);
+        jot::Backend backend(&controller);
+        bool qmlWarnings = false;
+        QQmlApplicationEngine engine;
+        QObject::connect(&engine, &QQmlEngine::warnings, &app,
+                         [&qmlWarnings](const QList<QQmlError> &) { qmlWarnings = true; });
+        engine.rootContext()->setContextProperty("jot", &backend);
+        engine.rootContext()->setContextProperty("fonts", &jot::Language::instance());
+        engine.addImageProvider("icon", new jot::IconProvider);
+        engine.load(QUrl("qrc:/qml/MainWindow.qml"));
+        if (engine.rootObjects().isEmpty()) return 1;
+        app.processEvents();
+        // Tear down windows while their QML context objects are still alive.
+        for (QWindow *window : QGuiApplication::topLevelWindows()) delete window;
+        return qmlWarnings ? 1 : 0;
+    }
     if (args.contains("--list-microphones")) {
         for (const auto &d : jot::MicrophoneManager::instance().inputs())
             printf("%s\t%s\n", d.id().constData(), qPrintable(d.description()));
