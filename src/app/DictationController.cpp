@@ -509,6 +509,9 @@ void DictationController::startHistoryServices()
 
     const QDateTime cutoff = QDateTime::currentDateTime();
     QTimer::singleShot(0, this, [this, cutoff] {
+        // Expire old entries first, so nothing stale is recovered or re-sent to the API.
+        m_history->reindex();
+        purgeRetention();
         m_scanner->scanAndRecover(cutoff, [this] {
             // Seed paste-last (memory only — never the clipboard) from History.
             for (const auto &r : m_history->records({}, 20))

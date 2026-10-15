@@ -1501,8 +1501,8 @@ they're spelled right in every dictation.</source>
 <context>
     <name>PrivacyPane</name>
     <message>
-        <source>Audio is needed for Retry. Deleting a transcript removes its whole History entry, audio included. Entries still waiting to be transcribed are always kept.</source>
-        <translation>Аудио нужно для повторного распознавания. При удалении текста удаляется вся запись Истории вместе с аудио. Записи, которые ещё ждут распознавания, всегда сохраняются.</translation>
+        <source>Audio is needed for Retry. When a transcript expires, its whole History entry is deleted, audio included.</source>
+        <translation>Аудио нужно для повторного распознавания. Когда срок хранения текста истекает, удаляется вся запись Истории вместе с аудио.</translation>
     </message>
     <message>
         <source>Keep audio recordings</source>

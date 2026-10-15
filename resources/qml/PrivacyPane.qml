@@ -9,7 +9,7 @@ PaneScroll {
 
     JSection {
         theme: pane.theme
-        footer: qsTr("Audio is needed for Retry. Deleting a transcript removes its whole History entry, audio included. Entries still waiting to be transcribed are always kept.")
+        footer: qsTr("Audio is needed for Retry. When a transcript expires, its whole History entry is deleted, audio included.")
         JRow {
             theme: pane.theme
             label: qsTr("Keep audio recordings")
