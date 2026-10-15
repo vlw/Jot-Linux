@@ -41,10 +41,14 @@ Item {
         Connections {
             target: root
             function onStChanged() {
-                const fromHidden = capsule.shownState === "hidden"
+                // "Appearing from nothing" only when the pill is really invisible. A pill that
+                // is still on screen (e.g. fading out after a short tap, when the hint comes
+                // right after) gets the normal resize-then-reveal transition.
+                const fromHidden = capsule.shownState === "hidden" && capsule.opacity < 0.05
                 capsule.shownState = root.st
                 if (root.st === "hidden") return          // keep the last content while fading out
-                capsule.contentState = root.st
+                // Order matters: enable/disable the width animation and hide the content
+                // BEFORE switching state, or the new size/content lands in one frame.
                 capsule.animateWidth = !fromHidden
                 revealAnim.stop()
                 if (fromHidden) {
@@ -55,6 +59,7 @@ Item {
                     capsule.contentOpacity = 0
                     revealTimer.restart()
                 }
+                capsule.contentState = root.st
             }
         }
 
