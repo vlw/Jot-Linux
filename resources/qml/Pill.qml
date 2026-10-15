@@ -24,6 +24,28 @@ Item {
         visible: root.st !== "hidden"
         opacity: root.st === "hidden" ? 0 : 1
 
+        // Size first, content second — the whole change stays under 0.25 s:
+        // width 150 ms, then the new state's content fades in over 90 ms.
+        // Appearing from hidden snaps straight to the right size.
+        property bool animateWidth: false
+        property bool revealed: true
+        property string shownState: "hidden"
+        Timer { id: revealTimer; interval: 150; onTriggered: capsule.revealed = true }
+        Connections {
+            target: root
+            function onStChanged() {
+                const fromHidden = capsule.shownState === "hidden"
+                capsule.shownState = root.st
+                capsule.animateWidth = !fromHidden
+                if (fromHidden) {
+                    capsule.revealed = true
+                } else {
+                    capsule.revealed = false
+                    revealTimer.restart()
+                }
+            }
+        }
+
         width: {
             switch (root.st) {
             case "idleDot": return 116
@@ -35,8 +57,8 @@ Item {
             }
             return 48
         }
-        Behavior on width { NumberAnimation { duration: 380; easing.type: Easing.OutBack; easing.overshoot: 0.9 } }
-        Behavior on opacity { NumberAnimation { duration: 160 } }
+        Behavior on width { enabled: capsule.animateWidth; NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: 90 } }
 
         onWidthChanged: reportRect()
         onVisibleChanged: reportRect()
@@ -62,8 +84,9 @@ Item {
             height: root.st === "idleDot" ? (root.hovering ? 34 : 8) : parent.height
             radius: height / 2
             color: root.st === "error" ? theme.errorContainer : theme.surface
-            Behavior on width { NumberAnimation { duration: root.hovering ? 450 : 300; easing.type: root.hovering ? Easing.OutBack : Easing.OutCubic; easing.overshoot: 1.4 } }
-            Behavior on height { NumberAnimation { duration: root.hovering ? 450 : 300; easing.type: root.hovering ? Easing.OutBack : Easing.OutCubic; easing.overshoot: 1.4 } }
+            // Only the resting dot morphs on its own (hover); otherwise the surface tracks the capsule exactly.
+            Behavior on width { enabled: root.st === "idleDot"; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+            Behavior on height { enabled: root.st === "idleDot"; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 160 } }
             Rectangle {
                 anchors.fill: parent
@@ -82,8 +105,8 @@ Item {
             visible: root.st === "idleDot"
             opacity: root.hovering ? 1 : 0
             scale: root.hovering ? 1 : 0.4
-            Behavior on opacity { NumberAnimation { duration: 340; easing.type: Easing.OutCubic } }
-            Behavior on scale { NumberAnimation { duration: 340; easing.type: Easing.OutBack; easing.overshoot: 1.3 } }
+            Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
             JIcon { name: "mic-on"; color: theme.gBlue; size: 16; anchors.verticalCenter: parent.verticalCenter }
             Text { text: qsTr("Dictate"); color: theme.ink; font: theme.label; anchors.verticalCenter: parent.verticalCenter }
         }
@@ -102,6 +125,8 @@ Item {
             anchors.centerIn: parent
             spacing: 12
             visible: root.st === "listening"
+            opacity: capsule.revealed ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: capsule.revealed ? 90 : 0 } }
             JIcon {
                 visible: pill.locked
                 name: "object-locked"
@@ -143,6 +168,8 @@ Item {
             anchors.centerIn: parent
             spacing: 12
             visible: root.st === "processing"
+            opacity: capsule.revealed ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: capsule.revealed ? 90 : 0 } }
             Waveform { theme: root.th; processing: true; anchors.verticalCenter: parent.verticalCenter }
             Text {
                 visible: pill.slow
@@ -177,8 +204,10 @@ Item {
             anchors.centerIn: parent
             width: 20; height: 20
             visible: root.st === "success"
+            opacity: capsule.revealed ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: capsule.revealed ? 90 : 0 } }
             scale: visible ? 1 : 0.6
-            Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutBack } }
+            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
             onVisibleChanged: requestPaint()
             onPaint: {
                 var ctx = getContext("2d")
@@ -200,6 +229,8 @@ Item {
             id: noticeText
             anchors.centerIn: parent
             visible: root.st === "notice"
+            opacity: capsule.revealed ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: capsule.revealed ? 90 : 0 } }
             text: pill.message
             color: theme.ink
             font: theme.label
@@ -211,6 +242,8 @@ Item {
             anchors.centerIn: parent
             spacing: 8
             visible: root.st === "error"
+            opacity: capsule.revealed ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: capsule.revealed ? 90 : 0 } }
             property real shake: 0
             transform: Translate { x: 4 * Math.sin(errorRow.shake * Math.PI * 3 * 2) }
             JIcon { name: "dialog-warning"; size: 16; color: theme.errorContainerInk; anchors.verticalCenter: parent.verticalCenter }
