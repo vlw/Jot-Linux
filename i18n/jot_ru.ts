@@ -1469,10 +1469,6 @@ they're spelled right in every dictation.</source>
         <source>Still working…</source>
         <translation>Ещё работаю…</translation>
     </message>
-    <message numerus="yes">
-        <source>%n word(s)</source>
-        <translation><numerusform>%n слово</numerusform><numerusform>%n слова</numerusform><numerusform>%n слов</numerusform></translation>
-    </message>
 </context>
 <context>
     <name>PrivacyPane</name>

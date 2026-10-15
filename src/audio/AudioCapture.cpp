@@ -218,7 +218,7 @@ public slots:
         fmt.setChannelCount(1);
         fmt.setSampleFormat(QAudioFormat::Int16);
         source = new QAudioSource(device, fmt, this);
-        source->setBufferSize(3200); // ~100 ms
+        source->setBufferSize(1280); // ~40 ms: frequent level updates for a fluid waveform
         io = source->start();
         if (!io || source->error() != QAudio::NoError) {
             qCWarning(lcAudio) << "QAudioSource failed to start:" << source->error();
@@ -295,7 +295,7 @@ public slots:
         ++levelCount;
         samplesSinceLevel += int(n);
         metered = true;
-        if (samplesSinceLevel >= 800) { // ~50 ms
+        if (samplesSinceLevel >= 320) { // ~20 ms
             const float lvl = AudioLevelCurve::level(float(levelAccumulator / levelCount));
             levelAccumulator = 0;
             levelCount = 0;

@@ -21,7 +21,14 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 8
-        height: 48
+        // Single line: 48 px. A long notice/error wraps to a second line and the pill
+        // grows taller instead of letting text spill past its edges.
+        height: {
+            if (capsule.contentState === "notice") return Math.max(48, noticeText.height + 24)
+            if (capsule.contentState === "error") return Math.max(48, errorText.height + 24)
+            return 48
+        }
+        Behavior on height { enabled: capsule.animateWidth; NumberAnimation { duration: 210; easing.type: Easing.InOutCubic } }
         // Fade out fully before disappearing — a hard visibility cut read as a blink.
         visible: opacity > 0.001
         opacity: root.st === "hidden" ? 0 : 1
@@ -69,8 +76,8 @@ Item {
             case "listening": return pill.locked ? 268 : 200
             case "processing": return pill.slow ? 264 : 176
             case "success": return 48
-            case "notice": return Math.min(560, noticeText.implicitWidth + 40)
-            case "error": return Math.min(560, errorRow.implicitWidth + 32)
+            case "notice": return noticeText.width + 40
+            case "error": return errorText.width + 16 + 8 + 32
             }
             return 48
         }
@@ -223,8 +230,9 @@ Item {
             scale: 0.8 + 0.2 * capsule.contentOpacity
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
-                strokeColor: theme.success
-                strokeWidth: 2.5
+                // Vivid Google green in both themes; the Material "success" token is too dull here.
+                strokeColor: theme.gGreen
+                strokeWidth: 3
                 fillColor: "transparent"
                 capStyle: ShapePath.RoundCap
                 joinStyle: ShapePath.RoundJoin
@@ -243,6 +251,11 @@ Item {
             text: pill.message
             color: theme.ink
             font: theme.label
+            width: Math.min(implicitWidth, 520)
+            wrapMode: Text.Wrap
+            maximumLineCount: 2
+            elide: Text.ElideRight
+            horizontalAlignment: Text.AlignHCenter
         }
 
         // ---- error
@@ -255,20 +268,19 @@ Item {
             property real shake: 0
             transform: Translate { x: 4 * Math.sin(errorRow.shake * Math.PI * 3 * 2) }
             JIcon { name: "dialog-warning"; size: 16; color: theme.errorContainerInk; anchors.verticalCenter: parent.verticalCenter }
-            Text { text: pill.message; color: theme.errorContainerInk; font: theme.label; anchors.verticalCenter: parent.verticalCenter }
+            Text {
+                id: errorText
+                text: pill.message
+                color: theme.errorContainerInk
+                font: theme.label
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.min(implicitWidth, 560 - 32 - 16 - 8)
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+            }
             NumberAnimation on shake { id: shakeAnim; from: 0; to: 1; duration: 250; running: false; easing.type: Easing.OutQuad }
         }
-    }
-
-    // Words count under the success check.
-    Text {
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: capsule.top
-        anchors.bottomMargin: 4
-        visible: capsule.contentState === "success" && pill.words > 20
-        text: qsTr("%n word(s)", "", pill.words)
-        color: theme.inkVariant
-        font: theme.labelSmall
     }
 
     Connections {
