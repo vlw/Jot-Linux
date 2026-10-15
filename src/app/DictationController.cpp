@@ -140,10 +140,9 @@ void DictationController::start()
                                          "org.freedesktop.login1.Manager", QString("PrepareForSleep"), this,
                                          SLOT(onPrepareForSleep(bool)));
 
-    m_retentionTimer.setInterval(6 * 3600 * 1000);
-    connect(&m_retentionTimer, &QTimer::timeout, this, [] {
-        RetentionPolicy::purgeExpiredAudio(Settings::instance().audioRetentionDays());
-    });
+    // Every 10 minutes: transcript retention can be as short as one hour.
+    m_retentionTimer.setInterval(10 * 60 * 1000);
+    connect(&m_retentionTimer, &QTimer::timeout, this, &DictationController::purgeRetention);
     m_retentionTimer.start();
 
     m_setupPoll.setInterval(2000);
@@ -518,7 +517,7 @@ void DictationController::startHistoryServices()
                     break;
                 }
             m_queue->start();
-            RetentionPolicy::purgeExpiredAudio(Settings::instance().audioRetentionDays());
+            purgeRetention();
         });
     });
 }
@@ -559,6 +558,13 @@ void DictationController::retryFromHistory(const DictationRecord &record)
             break;
         }
     });
+}
+
+void DictationController::purgeRetention()
+{
+    RetentionPolicy::purgeExpiredAudio(Settings::instance().audioRetentionDays());
+    RetentionPolicy::purgeExpiredTranscripts(m_history, Settings::instance().transcriptRetentionHours(),
+                                             m_coordinator->activeSessionFolder());
 }
 
 void DictationController::onPrepareForSleep(bool sleeping)

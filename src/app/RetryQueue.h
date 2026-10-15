@@ -69,6 +69,9 @@ private:
 
 namespace RetentionPolicy {
 void purgeExpiredAudio(int audioRetentionDays);
+/// Deletes whole History entries (text, audio, folder) older than `hours`.
+/// Entries still waiting to be transcribed and the active session are kept.
+int purgeExpiredTranscripts(HistoryStore *store, int hours, const QString &activeFolder);
 }
 
 } // namespace jot

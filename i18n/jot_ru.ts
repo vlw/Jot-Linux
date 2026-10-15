@@ -1501,8 +1501,8 @@ they're spelled right in every dictation.</source>
 <context>
     <name>PrivacyPane</name>
     <message>
-        <source>Transcripts stay in History until you delete them.</source>
-        <translation>Тексты остаются в Истории, пока вы их не удалите.</translation>
+        <source>Audio is needed for Retry. Deleting a transcript removes its whole History entry, audio included. Entries still waiting to be transcribed are always kept.</source>
+        <translation>Аудио нужно для повторного распознавания. При удалении текста удаляется вся запись Истории вместе с аудио. Записи, которые ещё ждут распознавания, всегда сохраняются.</translation>
     </message>
     <message>
         <source>Keep audio recordings</source>
@@ -1527,6 +1527,34 @@ they're spelled right in every dictation.</source>
     <message>
         <source>Forever</source>
         <translation>Всегда</translation>
+    </message>
+    <message>
+        <source>Keep transcripts</source>
+        <translation>Хранить тексты</translation>
+    </message>
+    <message>
+        <source>1 hour</source>
+        <translation>1 час</translation>
+    </message>
+    <message>
+        <source>12 hours</source>
+        <translation>12 часов</translation>
+    </message>
+    <message>
+        <source>15 days</source>
+        <translation>15 дней</translation>
+    </message>
+    <message>
+        <source>3 months</source>
+        <translation>3 месяца</translation>
+    </message>
+    <message>
+        <source>6 months</source>
+        <translation>Полгода</translation>
+    </message>
+    <message>
+        <source>1 year</source>
+        <translation>1 год</translation>
     </message>
     <message>
         <source>What leaves your computer</source>

@@ -358,6 +358,22 @@ void RecoveryScanner::scanAndRecover(const QDateTime &cutoff, std::function<void
 
 // ================================================================ Retention
 
+int RetentionPolicy::purgeExpiredTranscripts(HistoryStore *store, int hours, const QString &activeFolder)
+{
+    if (hours <= 0 || !store) return 0;
+    static const QStringList pending = {"recording", "recorded", "transcribing", "queuedForRetry"};
+    const QDateTime cutoff = QDateTime::currentDateTime().addSecs(-qint64(hours) * 3600);
+    int removed = 0;
+    for (const auto &r : store->recordsStartedBefore(cutoff)) {
+        if (pending.contains(r.status)) continue;
+        if (!activeFolder.isEmpty() && QDir(r.folder).canonicalPath() == QDir(activeFolder).canonicalPath()) continue;
+        store->remove(r.id, true);
+        ++removed;
+    }
+    if (removed) qCInfo(lcRetry) << "RetentionPolicy: removed" << removed << "History entr(ies) older than" << hours << "h";
+    return removed;
+}
+
 void RetentionPolicy::purgeExpiredAudio(int days)
 {
     if (days == 0) return;

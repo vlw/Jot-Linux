@@ -257,6 +257,11 @@ QList<DictationRecord> HistoryStore::interruptedRecords(const QDateTime &cutoff)
                  {"recording", "recorded", "transcribing", isoUTC(cutoff)});
 }
 
+QList<DictationRecord> HistoryStore::recordsStartedBefore(const QDateTime &cutoff) const
+{
+    return fetch("SELECT * FROM dictation WHERE startedAt < ? ORDER BY startedAt ASC", {isoUTC(cutoff)});
+}
+
 HistoryStore::Stats HistoryStore::stats() const
 {
     Stats s;

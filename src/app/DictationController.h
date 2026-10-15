@@ -39,6 +39,8 @@ public:
     void clearPasteLast() { m_clearPasteLast = true; }
     QString readyLine() const;
     void debugPill(const QString &state, const QString &path);
+    /// Applies both retention settings (audio files, then whole transcripts).
+    void purgeRetention();
 
 signals:
     void openMainWindow(const QString &section);

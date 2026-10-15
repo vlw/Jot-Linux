@@ -9,7 +9,7 @@ PaneScroll {
 
     JSection {
         theme: pane.theme
-        footer: qsTr("Transcripts stay in History until you delete them.")
+        footer: qsTr("Audio is needed for Retry. Deleting a transcript removes its whole History entry, audio included. Entries still waiting to be transcribed are always kept.")
         JRow {
             theme: pane.theme
             label: qsTr("Keep audio recordings")
@@ -24,6 +24,27 @@ PaneScroll {
                 ]
                 current: (pane.r, Number(jot.setting("audioRetentionDays")))
                 onPicked: v => { jot.setSetting("audioRetentionDays", v); jot.purgeRetention() }
+            }
+        }
+        JRow {
+            theme: pane.theme
+            label: qsTr("Keep transcripts")
+            JPicker {
+                theme: pane.theme
+                options: [
+                    { text: qsTr("1 hour"), value: 1 },
+                    { text: qsTr("12 hours"), value: 12 },
+                    { text: qsTr("24 hours"), value: 24 },
+                    { text: qsTr("7 days"), value: 7 * 24 },
+                    { text: qsTr("15 days"), value: 15 * 24 },
+                    { text: qsTr("30 days"), value: 30 * 24 },
+                    { text: qsTr("3 months"), value: 91 * 24 },
+                    { text: qsTr("6 months"), value: 182 * 24 },
+                    { text: qsTr("1 year"), value: 365 * 24 },
+                    { text: qsTr("Forever"), value: 0 },
+                ]
+                current: (pane.r, Number(jot.setting("transcriptRetentionHours")))
+                onPicked: v => { jot.setSetting("transcriptRetentionHours", v); jot.purgeRetention() }
             }
         }
     }

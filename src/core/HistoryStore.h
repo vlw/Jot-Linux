@@ -42,6 +42,7 @@ public:
     QList<DictationRecord> records(const QString &query = {}, int limit = 500, bool attentionOnly = false) const;
     QList<DictationRecord> retryableRecords() const;
     QList<DictationRecord> interruptedRecords(const QDateTime &cutoff) const;
+    QList<DictationRecord> recordsStartedBefore(const QDateTime &cutoff) const;
     std::optional<DictationRecord> record(const QString &id) const;
 
     struct Stats { int totalWords = 0; int totalDictations = 0; int averageWPM = 0; };

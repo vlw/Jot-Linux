@@ -391,5 +391,13 @@
   "Wait for transcription": "Ждать распознавание",
   "Minimum recording length": "Минимальная длина записи",
   "%1 s": "%1 с",
-  "Version %1 · Linux edition": "Версия %1 · для Linux"
+  "Version %1 · Linux edition": "Версия %1 · для Linux",
+  "Keep transcripts": "Хранить тексты",
+  "1 hour": "1 час",
+  "12 hours": "12 часов",
+  "15 days": "15 дней",
+  "3 months": "3 месяца",
+  "6 months": "Полгода",
+  "1 year": "1 год",
+  "Audio is needed for Retry. Deleting a transcript removes its whole History entry, audio included. Entries still waiting to be transcribed are always kept.": "Аудио нужно для повторного распознавания. При удалении текста удаляется вся запись Истории вместе с аудио. Записи, которые ещё ждут распознавания, всегда сохраняются."
 }

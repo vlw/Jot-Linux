@@ -164,6 +164,7 @@ QVariant Backend::setting(const QString &key) const
     if (key == "experimentalNoiseHandling") return s.experimentalNoiseHandling();
     if (key == "liveTranscription") return s.liveTranscription();
     if (key == "audioRetentionDays") return s.audioRetentionDays();
+    if (key == "transcriptRetentionHours") return s.transcriptRetentionHours();
     if (key == "hotkeyCode") return s.hotkeyCode();
     if (key == "hotkeyBackend") return s.hotkeyBackend();
     if (key == "pasteShortcut") return s.pasteShortcut();
@@ -218,8 +219,7 @@ bool Backend::setLaunchAtLogin(bool enabled)
 
 void Backend::purgeRetention()
 {
-    const int days = Settings::instance().audioRetentionDays();
-    QTimer::singleShot(10, this, [days] { RetentionPolicy::purgeExpiredAudio(days); });
+    QTimer::singleShot(10, m_controller, &DictationController::purgeRetention);
 }
 
 // ------------------------------------------------------------------ keyboard

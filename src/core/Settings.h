@@ -70,6 +70,8 @@ public:
 
     int audioRetentionDays() const { return value("audioRetentionDays", 7).toInt(); }
     void setAudioRetentionDays(int d) { set("audioRetentionDays", d); }
+    /// Hours to keep transcripts (whole History entries). 0 = forever. Default 15 days.
+    int transcriptRetentionHours() const { return value("transcriptRetentionHours", 15 * 24).toInt(); }
 
     int recordGateTrip(const QDateTime &now = QDateTime::currentDateTimeUtc());
 
