@@ -141,7 +141,7 @@ void PillHUD::syncVisibility()
         return;
     }
     // Nothing to draw: remove the overlay surface entirely once the fade-out finishes.
-    QTimer::singleShot(250, m_view, [this] {
+    QTimer::singleShot(450, m_view, [this] {
         if (m_model->stateEnum() == PillModel::State::Hidden) m_view->hide();
     });
 }

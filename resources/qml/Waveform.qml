@@ -16,7 +16,7 @@ Item {
     height: 38
 
     Timer {
-        interval: root.processing ? 83 : 42   // 12 fps processing, 24 fps live
+        interval: 33   // 30 fps: smooth for both modes
         running: root.visible
         repeat: true
         onTriggered: {
@@ -52,9 +52,13 @@ Item {
                 }
                 color: {
                     if (!root.processing) return root.theme.gBlue
-                    var sweep = (root.t % 1.2) / 1.2
-                    var hue = (index / 5 + sweep) % 1
-                    return root.theme.brandQuad[Math.floor(hue * 4) % 4]
+                    // Colours flow continuously through the Google quad instead of stepping.
+                    var pos = ((index / 5 + root.t / 2.4) % 1) * 4
+                    var a = root.theme.brandQuad[Math.floor(pos) % 4]
+                    var b = root.theme.brandQuad[(Math.floor(pos) + 1) % 4]
+                    var f = pos - Math.floor(pos)
+                    f = f * f * (3 - 2 * f)
+                    return Qt.rgba(a.r + (b.r - a.r) * f, a.g + (b.g - a.g) * f, a.b + (b.b - a.b) * f, 1)
                 }
             }
         }

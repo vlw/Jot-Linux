@@ -1,6 +1,7 @@
 // Port of PillView.swift — the HUD at the bottom of the screen.
 import QtQuick
 import QtQuick.Effects
+import QtQuick.Shapes
 
 Item {
     id: root
@@ -21,33 +22,44 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 8
         height: 48
-        visible: root.st !== "hidden"
+        // Fade out fully before disappearing — a hard visibility cut read as a blink.
+        visible: opacity > 0.001
         opacity: root.st === "hidden" ? 0 : 1
 
-        // Size first, content second — the whole change stays under 0.25 s:
-        // width 150 ms, then the new state's content fades in over 90 ms.
+        // Size first, content second — the whole change takes 0.35 s:
+        // width 210 ms, then the new state's content fades in over 140 ms.
         // Appearing from hidden snaps straight to the right size.
         property bool animateWidth: false
         property bool revealed: true
+        // Explicitly driven, never by a binding-triggered Behavior: hide at once on a
+        // state change, fade in only after the size has settled.
+        property real contentOpacity: 1
+        NumberAnimation { id: revealAnim; target: capsule; property: "contentOpacity"; to: 1; duration: 140; easing.type: Easing.InOutQuad }
         property string shownState: "hidden"
-        Timer { id: revealTimer; interval: 150; onTriggered: capsule.revealed = true }
+        property string contentState: "hidden"
+        Timer { id: revealTimer; interval: 210; onTriggered: { capsule.revealed = true; revealAnim.restart() } }
         Connections {
             target: root
             function onStChanged() {
                 const fromHidden = capsule.shownState === "hidden"
                 capsule.shownState = root.st
+                if (root.st === "hidden") return          // keep the last content while fading out
+                capsule.contentState = root.st
                 capsule.animateWidth = !fromHidden
+                revealAnim.stop()
                 if (fromHidden) {
                     capsule.revealed = true
+                    capsule.contentOpacity = 1
                 } else {
                     capsule.revealed = false
+                    capsule.contentOpacity = 0
                     revealTimer.restart()
                 }
             }
         }
 
         width: {
-            switch (root.st) {
+            switch (capsule.contentState) {
             case "idleDot": return 116
             case "listening": return pill.locked ? 268 : 200
             case "processing": return pill.slow ? 264 : 176
@@ -57,8 +69,8 @@ Item {
             }
             return 48
         }
-        Behavior on width { enabled: capsule.animateWidth; NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-        Behavior on opacity { NumberAnimation { duration: 90 } }
+        Behavior on width { enabled: capsule.animateWidth; NumberAnimation { duration: 210; easing.type: Easing.InOutCubic } }
+        Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } }
 
         onWidthChanged: reportRect()
         onVisibleChanged: reportRect()
@@ -80,18 +92,18 @@ Item {
         Rectangle {
             id: surface
             anchors.centerIn: parent
-            width: root.st === "idleDot" ? (root.hovering ? 116 : 40) : parent.width
-            height: root.st === "idleDot" ? (root.hovering ? 34 : 8) : parent.height
+            width: capsule.contentState === "idleDot" ? (root.hovering ? 116 : 40) : parent.width
+            height: capsule.contentState === "idleDot" ? (root.hovering ? 34 : 8) : parent.height
             radius: height / 2
-            color: root.st === "error" ? theme.errorContainer : theme.surface
+            color: capsule.contentState === "error" ? theme.errorContainer : theme.surface
             // Only the resting dot morphs on its own (hover); otherwise the surface tracks the capsule exactly.
-            Behavior on width { enabled: root.st === "idleDot"; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-            Behavior on height { enabled: root.st === "idleDot"; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+            Behavior on width { enabled: capsule.contentState === "idleDot"; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+            Behavior on height { enabled: capsule.contentState === "idleDot"; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 160 } }
             Rectangle {
                 anchors.fill: parent
                 radius: parent.radius
-                visible: root.st === "idleDot"
+                visible: capsule.contentState === "idleDot"
                 color: theme.inkVariant
                 opacity: root.hovering ? 0.04 : 0.18
                 Behavior on opacity { NumberAnimation { duration: 200 } }
@@ -102,7 +114,7 @@ Item {
         Row {
             anchors.centerIn: parent
             spacing: 8
-            visible: root.st === "idleDot"
+            visible: capsule.contentState === "idleDot"
             opacity: root.hovering ? 1 : 0
             scale: root.hovering ? 1 : 0.4
             Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
@@ -114,7 +126,7 @@ Item {
             id: dotArea
             anchors.centerIn: parent
             width: 116; height: 48
-            enabled: root.st === "idleDot"
+            enabled: capsule.contentState === "idleDot"
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: pill.dotTapped()
@@ -124,9 +136,8 @@ Item {
         Row {
             anchors.centerIn: parent
             spacing: 12
-            visible: root.st === "listening"
-            opacity: capsule.revealed ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: capsule.revealed ? 90 : 0 } }
+            visible: capsule.contentState === "listening"
+            opacity: capsule.contentOpacity
             JIcon {
                 visible: pill.locked
                 name: "object-locked"
@@ -167,9 +178,8 @@ Item {
         Row {
             anchors.centerIn: parent
             spacing: 12
-            visible: root.st === "processing"
-            opacity: capsule.revealed ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: capsule.revealed ? 90 : 0 } }
+            visible: capsule.contentState === "processing"
+            opacity: capsule.contentOpacity
             Waveform { theme: root.th; processing: true; anchors.verticalCenter: parent.verticalCenter }
             Text {
                 visible: pill.slow
@@ -199,28 +209,23 @@ Item {
         }
 
         // ---- success
-        Canvas {
+        Shape {
             id: check
             anchors.centerIn: parent
             width: 20; height: 20
-            visible: root.st === "success"
-            opacity: capsule.revealed ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: capsule.revealed ? 90 : 0 } }
-            scale: visible ? 1 : 0.6
-            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-            onVisibleChanged: requestPaint()
-            onPaint: {
-                var ctx = getContext("2d")
-                ctx.reset()
-                ctx.strokeStyle = theme.success
-                ctx.lineWidth = 2.5
-                ctx.lineCap = "round"
-                ctx.lineJoin = "round"
-                ctx.beginPath()
-                ctx.moveTo(0.05 * width, height / 2 + 0.1 * height)
-                ctx.lineTo(0.38 * width, height - 0.12 * height)
-                ctx.lineTo(width - 0.02 * width, 0.15 * height)
-                ctx.stroke()
+            visible: capsule.contentState === "success"
+            opacity: capsule.contentOpacity
+            scale: 0.8 + 0.2 * capsule.contentOpacity
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeColor: theme.success
+                strokeWidth: 2.5
+                fillColor: "transparent"
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+                startX: 1; startY: 12
+                PathLine { x: 7.6; y: 17.6 }
+                PathLine { x: 19.6; y: 3 }
             }
         }
 
@@ -228,9 +233,8 @@ Item {
         Text {
             id: noticeText
             anchors.centerIn: parent
-            visible: root.st === "notice"
-            opacity: capsule.revealed ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: capsule.revealed ? 90 : 0 } }
+            visible: capsule.contentState === "notice"
+            opacity: capsule.contentOpacity
             text: pill.message
             color: theme.ink
             font: theme.label
@@ -241,9 +245,8 @@ Item {
             id: errorRow
             anchors.centerIn: parent
             spacing: 8
-            visible: root.st === "error"
-            opacity: capsule.revealed ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: capsule.revealed ? 90 : 0 } }
+            visible: capsule.contentState === "error"
+            opacity: capsule.contentOpacity
             property real shake: 0
             transform: Translate { x: 4 * Math.sin(errorRow.shake * Math.PI * 3 * 2) }
             JIcon { name: "dialog-warning"; size: 16; color: theme.errorContainerInk; anchors.verticalCenter: parent.verticalCenter }
@@ -257,7 +260,7 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: capsule.top
         anchors.bottomMargin: 4
-        visible: root.st === "success" && pill.words > 20
+        visible: capsule.contentState === "success" && pill.words > 20
         text: qsTr("%n word(s)", "", pill.words)
         color: theme.inkVariant
         font: theme.labelSmall
