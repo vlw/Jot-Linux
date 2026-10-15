@@ -25,11 +25,7 @@ Item {
     }
     function timeLabel(d) { return d.toLocaleTimeString(Qt.locale(jot.localeName), Locale.ShortFormat) }
     function attentionTitle(r) {
-        if (r.status === "queuedForRetry") {
-            if (r.errorCode === "auth") return qsTr("Waiting for a working API key — retries automatically")
-            if (r.errorCode === "quota") return qsTr("Waiting for quota or credits — retries automatically")
-            return qsTr("Waiting for network")
-        }
+        if (r.status === "queuedForRetry") return qsTr("Not transcribed")
         if (r.status === "cancelled") return r.audioExists ? qsTr("Cancelled recording — audio kept") : qsTr("Cancelled recording — audio deleted by your retention setting")
         if (r.status === "failed") {
             switch (r.errorCode) {
@@ -39,8 +35,11 @@ Item {
             case "model": return qsTr("Model not available to your key — see Settings → Advanced")
             case "cancelled": return qsTr("Transcription cancelled — audio kept")
             case "gave_up": return qsTr("No answer in time — tap Retry")
-            case "auth": return qsTr("API key problem — retries automatically after you fix it")
-            case "quota": return qsTr("Quota or credits exhausted — retries automatically")
+            case "auth": return qsTr("API key problem — fix it in Settings → Advanced")
+            case "quota": return qsTr("Quota or credits exhausted")
+            case "network": return qsTr("No connection to the service")
+            case "timeout": return qsTr("The service didn't answer in time")
+            case "interrupted": return qsTr("Interrupted — Jot was closed while dictating")
             }
             return qsTr("Transcription failed")
         }
@@ -56,7 +55,7 @@ Item {
     function statusName(s) {
         return ({ inserted: qsTr("Inserted at the cursor"), copiedToClipboard: qsTr("Copied to the clipboard"), awaitingChip: qsTr("Ready to paste"),
                   recovered: qsTr("Recovered — use Copy to grab the text"), heldSecure: qsTr("Kept — secure field blocked insertion"),
-                  queuedForRetry: qsTr("Queued — retries automatically"), cancelled: qsTr("Cancelled"), failed: qsTr("Failed"), silent: qsTr("No speech detected") })[s] || s
+                  queuedForRetry: qsTr("Not transcribed"), cancelled: qsTr("Cancelled"), failed: qsTr("Failed"), silent: qsTr("No speech detected") })[s] || s
     }
 
     ColumnLayout {

@@ -39,7 +39,7 @@ DictationController::DictationController(QObject *parent)
     , m_coordinator(new DictationCoordinator(this))
     , m_history(HistoryStore::standard())
     , m_queue(new RetryQueue(m_history, this))
-    , m_scanner(new RecoveryScanner(m_history, m_queue, this))
+    , m_scanner(new RecoveryScanner(m_history, this))
     , m_pill(new PillModel(this))
     , m_hud(new PillHUD(m_pill, this))
     , m_tray(new TrayController(this))
@@ -220,7 +220,6 @@ void DictationController::applySettingChange(const QString &key)
     } else if (key == "apiKey" || key == "openRouterKey" || key == "transcriptionProvider") {
         if (Settings::instance().hasSelectedAPIKey()) {
             activateEngine();
-            m_queue->drain();
         } else {
             m_tray->setStatusLine(QCoreApplication::translate("Jot", "Add your %1 API key in Settings → Advanced")
                                       .arg(Settings::instance().transcriptionProvider() == TranscriptionProvider::MAI ? "OpenRouter" : "Gemini"));
@@ -487,29 +486,12 @@ void DictationController::startHistoryServices()
     m_history->onUserDelete = [this](const DictationRecord &record) {
         m_coordinator->forgetLastResult(record.cleanedTranscript.value_or(QString()));
     };
-    m_queue->onDrained = [this](int n) {
-        showBackgroundNotice(n == 1 ? QCoreApplication::translate("Jot", "Your queued dictation is ready — it's in History")
-                                    : QCoreApplication::translate("Jot", "%1 queued dictations are ready — they're in History").arg(n),
-                             4.0, int(Sound::Success));
-    };
-    m_queue->onDrainBlocked = [this](const TranscriptionError &error) {
-        const auto provider = m_queue->lastTranscriptionProvider();
-        const QString name = providerName(provider);
-        QString msg;
-        if (error.kind == TranscriptionErrorKind::Auth)
-            msg = QCoreApplication::translate("Jot", "%1: queued dictations are waiting — fix your key in Settings → Advanced").arg(name);
-        else if (provider == TranscriptionProvider::MAI)
-            msg = QCoreApplication::translate("Jot", "OpenRouter balance exhausted — queued dictations are waiting for credits");
-        else
-            msg = QCoreApplication::translate("Jot", "Gemini quota or credits exhausted — queued dictations will retry later");
-        showBackgroundNotice(msg, 5.0);
-    };
     m_queue->onTranscriptCopied = [this](const QString &text) { m_coordinator->noteLastResult(text); };
     m_scanner->onRecovered = [this](const QString &message) { showBackgroundNotice(message, 4.0, int(Sound::Success)); };
 
     const QDateTime cutoff = QDateTime::currentDateTime();
     QTimer::singleShot(0, this, [this, cutoff] {
-        // Expire old entries first, so nothing stale is recovered or re-sent to the API.
+        // Expire old entries first. Nothing is ever re-sent automatically.
         m_history->reindex();
         purgeRetention();
         m_scanner->scanAndRecover(cutoff, [this] {
@@ -519,8 +501,6 @@ void DictationController::startHistoryServices()
                     m_coordinator->seedLastResult(*r.cleanedTranscript);
                     break;
                 }
-            m_queue->start();
-            purgeRetention();
         });
     });
 }
@@ -532,7 +512,7 @@ void DictationController::retryFromHistory(const DictationRecord &record)
         const QString name = providerName(m_queue->lastTranscriptionProvider());
         switch (outcome) {
         case RetryQueue::Outcome::StillOffline:
-            showNotice(QCoreApplication::translate("Jot", "%1 unavailable — will retry automatically later").arg(name), 4.0);
+            showNotice(QCoreApplication::translate("Jot", "%1 unavailable — try again later").arg(name), 4.0);
             break;
         case RetryQueue::Outcome::Failed:
             showNotice(QCoreApplication::translate("Jot", "%1 retry didn't work — the row has the details").arg(name), 3.0);
@@ -554,6 +534,16 @@ void DictationController::retryFromHistory(const DictationRecord &record)
         case RetryQueue::Outcome::Recovered:
             showBackgroundNotice(QCoreApplication::translate("Jot", "Transcription is ready — copied to clipboard"), 4.0, int(Sound::Success));
             break;
+        case RetryQueue::Outcome::Blocked: {
+            const auto f = m_queue->lastFailure();
+            if (f && f->kind == TranscriptionErrorKind::Auth)
+                showNotice(QCoreApplication::translate("Jot", "Check your %1 key in Settings → Advanced").arg(name), 4.0);
+            else
+                showNotice(m_queue->lastTranscriptionProvider() == TranscriptionProvider::MAI
+                               ? QCoreApplication::translate("Jot", "OpenRouter balance exhausted")
+                               : QCoreApplication::translate("Jot", "Gemini quota or credits exhausted"), 4.0);
+            break;
+        }
         case RetryQueue::Outcome::AlreadyRetrying:
             showNotice(QCoreApplication::translate("Jot", "This dictation is already being retried"), 2.5);
             break;

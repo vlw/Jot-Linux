@@ -420,12 +420,6 @@ void DictationCoordinator::failTranscription(const QUuid &sessionID, const Trans
             return;
         }
     }
-    if (error.kind == TranscriptionErrorKind::Offline) {
-        updateMeta([](SessionMeta &m) { m.status = SessionMeta::Status::QueuedForRetry; m.errorCode = QString("offline"); });
-        apply(DictationEvent::of(EK::QueuedForRetry));
-        setSession(std::nullopt);
-        return;
-    }
     DictationFailure failure = DictationFailure::Network;
     QString code = "unknown";
     std::optional<QString> detail;
@@ -435,6 +429,7 @@ void DictationCoordinator::failTranscription(const QUuid &sessionID, const Trans
         failure = DictationFailure::ModelAccess; code = "model";
         detail = error.detail.isEmpty() ? QString("model %1 not accessible").arg(error.model) : error.detail;
         break;
+    case TranscriptionErrorKind::Offline:
     case TranscriptionErrorKind::Network: failure = DictationFailure::Network; code = "network"; break;
     case TranscriptionErrorKind::Auth: failure = DictationFailure::Auth; code = "auth"; break;
     case TranscriptionErrorKind::RateLimitedDaily: failure = DictationFailure::QuotaExhausted; code = "quota"; break;

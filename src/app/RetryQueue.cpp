@@ -14,7 +14,6 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QLoggingCategory>
-#include <QNetworkInformation>
 
 Q_LOGGING_CATEGORY(lcRetry, "jot.retry")
 
@@ -26,81 +25,12 @@ RetryQueue::RetryQueue(HistoryStore *store, QObject *parent)
 {
 }
 
-void RetryQueue::start()
-{
-    if (QNetworkInformation::loadBackendByFeatures(QNetworkInformation::Feature::Reachability)) {
-        auto *info = QNetworkInformation::instance();
-        m_lastOnline = info->reachability() == QNetworkInformation::Reachability::Online;
-        connect(info, &QNetworkInformation::reachabilityChanged, this, [this](QNetworkInformation::Reachability r) {
-            const bool online = r == QNetworkInformation::Reachability::Online;
-            const bool cameOnline = online && !m_lastOnline;
-            m_lastOnline = online;
-            if (cameOnline) {
-                qCInfo(lcRetry) << "network restored — draining";
-                drain();
-            }
-        });
-    }
-    m_periodic.setInterval(periodicDrainIntervalMs);
-    connect(&m_periodic, &QTimer::timeout, this, [this] { drain(false); });
-    m_periodic.start();
-    drain();
-}
-
 bool RetryQueue::isCompleted(const QString &folder)
 {
     const auto meta = SessionMeta::read(folder);
     if (!meta) return false;
     return meta->status == SessionMeta::Status::AwaitingChip || meta->status == SessionMeta::Status::Inserted
         || meta->status == SessionMeta::Status::Recovered;
-}
-
-void RetryQueue::drain(bool announceBlocked)
-{
-    if (m_draining) {
-        m_requestedDrainAnnounces = m_requestedDrainAnnounces.value_or(false) || announceBlocked;
-        return;
-    }
-    const auto retryable = m_store->retryableRecords();
-    if (retryable.isEmpty()) return;
-    m_draining = true;
-    drainNext(retryable, 0, announceBlocked);
-}
-
-void RetryQueue::drainNext(QList<DictationRecord> rest, int recovered, bool announceBlocked)
-{
-    if (rest.isEmpty()) {
-        if (recovered > 0 && onDrained) onDrained(recovered);
-        finishExclusive();
-        return;
-    }
-    if (m_manualWaiting > 0) {
-        m_requestedDrainAnnounces = m_requestedDrainAnnounces.value_or(false) || announceBlocked;
-        if (recovered > 0 && onDrained) onDrained(recovered);
-        finishExclusive();
-        return;
-    }
-    const DictationRecord record = rest.takeFirst();
-    process(record, false, [=, this](Process result, TranscriptionError error) {
-        switch (result) {
-        case Process::Recovered:
-            drainNext(rest, recovered + 1, announceBlocked);
-            return;
-        case Process::StillOffline:
-            qCInfo(lcRetry) << "still offline — pausing drain";
-            if (recovered > 0 && onDrained) onDrained(recovered);
-            finishExclusive();
-            return;
-        case Process::Blocked:
-            qCWarning(lcRetry) << "drain blocked (" << error.describe() << ") — keeping queue intact";
-            if (recovered > 0 && onDrained) onDrained(recovered);
-            if (announceBlocked && onDrainBlocked) onDrainBlocked(error);
-            finishExclusive();
-            return;
-        default:
-            drainNext(rest, recovered, announceBlocked);
-        }
-    });
 }
 
 void RetryQueue::acquireExclusive(std::function<void()> then)
@@ -123,10 +53,6 @@ void RetryQueue::acquireExclusive(std::function<void()> then)
 void RetryQueue::finishExclusive()
 {
     m_draining = false;
-    if (m_manualWaiting != 0 || !m_requestedDrainAnnounces) return;
-    const bool announce = *m_requestedDrainAnnounces;
-    m_requestedDrainAnnounces.reset();
-    QMetaObject::invokeMethod(this, [this, announce] { drain(announce); }, Qt::QueuedConnection);
 }
 
 void RetryQueue::retrySingle(const DictationRecord &record, std::function<void(Outcome)> cb)
@@ -145,25 +71,12 @@ void RetryQueue::retrySingle(const DictationRecord &record, std::function<void(O
             switch (r) {
             case Process::Recovered: done(Outcome::Recovered); break;
             case Process::StillOffline: done(Outcome::StillOffline); break;
-            case Process::Blocked:
-                if (onDrainBlocked) onDrainBlocked(error);
-                done(Outcome::Blocked);
-                break;
+            case Process::Blocked: done(Outcome::Blocked); break;
             case Process::Failed: done(Outcome::Failed); break;
             case Process::Skipped: done(Outcome::AlreadyDone); break;
             case Process::AudioUnavailable: done(Outcome::AudioUnavailable); break;
             case Process::KeptPreviousTranscript: done(Outcome::KeptPreviousTranscript); break;
             }
-        });
-    });
-}
-
-void RetryQueue::recoverInterrupted(const DictationRecord &record, std::function<void(bool)> cb)
-{
-    acquireExclusive([=, this] {
-        process(record, false, [=, this](Process r, TranscriptionError) {
-            finishExclusive();
-            cb(r == Process::Recovered);
         });
     });
 }
@@ -237,12 +150,12 @@ void RetryQueue::process(const DictationRecord &record, bool reprocess, std::fun
         case TranscriptionErrorKind::Network:
         case TranscriptionErrorKind::Timeout:
         case TranscriptionErrorKind::RateLimitedTransient:
-            if (reprocess) queueForDrain(meta, folder, "offline");
+            persistFailure(meta, folder, error.kind == TranscriptionErrorKind::Timeout ? "timeout" : "network", std::nullopt);
             cb(Process::StillOffline, error);
             return;
         case TranscriptionErrorKind::Auth:
         case TranscriptionErrorKind::RateLimitedDaily:
-            if (reprocess) queueForDrain(meta, folder, error.kind == TranscriptionErrorKind::Auth ? "auth" : "quota");
+            persistFailure(meta, folder, error.kind == TranscriptionErrorKind::Auth ? "auth" : "quota", std::nullopt);
             cb(Process::Blocked, error);
             return;
         case TranscriptionErrorKind::ModelUnavailable:
@@ -297,21 +210,11 @@ void RetryQueue::persistFailure(SessionMeta &meta, const QString &folder, const 
     m_store->upsert(meta, folder);
 }
 
-void RetryQueue::queueForDrain(SessionMeta &meta, const QString &folder, const QString &code)
-{
-    if (!QFileInfo::exists(folder)) return;
-    meta.status = SessionMeta::Status::QueuedForRetry;
-    meta.errorCode = code;
-    meta.write(folder);
-    m_store->upsert(meta, folder);
-}
-
 // ================================================================ Recovery
 
-RecoveryScanner::RecoveryScanner(HistoryStore *store, RetryQueue *queue, QObject *parent)
+RecoveryScanner::RecoveryScanner(HistoryStore *store, QObject *parent)
     : QObject(parent)
     , m_store(store)
-    , m_queue(queue)
 {
 }
 
@@ -321,7 +224,6 @@ void RecoveryScanner::scanAndRecover(const QDateTime &cutoff, std::function<void
     const auto interrupted = m_store->interruptedRecords(cutoff);
     if (interrupted.isEmpty()) { done(); return; }
     qCInfo(lcRetry) << interrupted.size() << "interrupted session(s) found";
-    std::optional<DictationRecord> mostRecent;
     for (int i = 0; i < interrupted.size(); ++i) {
         const auto &record = interrupted[i];
         auto metaOpt = SessionMeta::read(record.folder);
@@ -342,18 +244,15 @@ void RecoveryScanner::scanAndRecover(const QDateTime &cutoff, std::function<void
             m_store->upsert(meta, record.folder);
             continue;
         }
+        // Interrupted mid-dictation (crash, power loss): never sent again automatically.
+        // The audio stays in History for a look and an optional manual Retry.
         if (!meta.audioDurationSeconds) meta.audioDurationSeconds = FileLayout::estimatedDuration(audio);
-        meta.status = SessionMeta::Status::QueuedForRetry;
-        if (!meta.errorCode) meta.errorCode = QString("recovered");
+        meta.status = SessionMeta::Status::Failed;
+        meta.errorCode = QString("interrupted");
         meta.write(record.folder);
         m_store->upsert(meta, record.folder);
-        if (i == 0) mostRecent = record;
     }
-    if (!mostRecent) { done(); return; }
-    m_queue->recoverInterrupted(*mostRecent, [this, done](bool ok) {
-        if (ok && onRecovered) onRecovered(QCoreApplication::translate("Jot", "Recovered your last dictation — copied and saved to History"));
-        done();
-    });
+    done();
 }
 
 // ================================================================ Retention

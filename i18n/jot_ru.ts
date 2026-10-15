@@ -514,18 +514,6 @@ they're spelled right in every dictation.</source>
         <translation>d MMMM yyyy</translation>
     </message>
     <message>
-        <source>Waiting for a working API key — retries automatically</source>
-        <translation>Ждёт рабочий ключ API — повторит автоматически</translation>
-    </message>
-    <message>
-        <source>Waiting for quota or credits — retries automatically</source>
-        <translation>Ждёт квоту или пополнение — повторит автоматически</translation>
-    </message>
-    <message>
-        <source>Waiting for network</source>
-        <translation>Ждёт сеть</translation>
-    </message>
-    <message>
         <source>Cancelled recording — audio kept</source>
         <translation>Отменённая запись — аудио сохранено</translation>
     </message>
@@ -556,14 +544,6 @@ they're spelled right in every dictation.</source>
     <message>
         <source>No answer in time — tap Retry</source>
         <translation>Не дождались ответа — нажмите «Повторить»</translation>
-    </message>
-    <message>
-        <source>API key problem — retries automatically after you fix it</source>
-        <translation>Проблема с ключом API — повторит автоматически, когда исправите</translation>
-    </message>
-    <message>
-        <source>Quota or credits exhausted — retries automatically</source>
-        <translation>Квота или баланс исчерпаны — повторит автоматически</translation>
     </message>
     <message>
         <source>Transcription failed</source>
@@ -610,8 +590,28 @@ they're spelled right in every dictation.</source>
         <translation>Сохранено — защищённое поле не дало вставить</translation>
     </message>
     <message>
-        <source>Queued — retries automatically</source>
-        <translation>В очереди — повторит автоматически</translation>
+        <source>Not transcribed</source>
+        <translation>Не распознано</translation>
+    </message>
+    <message>
+        <source>API key problem — fix it in Settings → Advanced</source>
+        <translation>Проблема с ключом API — исправьте в Настройки → Дополнительно</translation>
+    </message>
+    <message>
+        <source>Quota or credits exhausted</source>
+        <translation>Квота или баланс исчерпаны</translation>
+    </message>
+    <message>
+        <source>No connection to the service</source>
+        <translation>Нет связи с сервисом</translation>
+    </message>
+    <message>
+        <source>The service didn't answer in time</source>
+        <translation>Сервис не ответил вовремя</translation>
+    </message>
+    <message>
+        <source>Interrupted — Jot was closed while dictating</source>
+        <translation>Прервано — Jot закрылся во время диктовки</translation>
     </message>
     <message>
         <source>Failed</source>
@@ -893,32 +893,12 @@ they're spelled right in every dictation.</source>
         <translation>Пока нечего вставить — сначала что-нибудь продиктуйте</translation>
     </message>
     <message>
-        <source>Your queued dictation is ready — it's in History</source>
-        <translation>Диктовка из очереди готова — она в Истории</translation>
-    </message>
-    <message>
-        <source>%1 queued dictations are ready — they're in History</source>
-        <translation>Диктовки из очереди готовы (%1) — они в Истории</translation>
-    </message>
-    <message>
-        <source>%1: queued dictations are waiting — fix your key in Settings → Advanced</source>
-        <translation>%1: диктовки ждут в очереди — исправьте ключ в Настройки → Дополнительно</translation>
-    </message>
-    <message>
-        <source>OpenRouter balance exhausted — queued dictations are waiting for credits</source>
-        <translation>Баланс OpenRouter исчерпан — диктовки в очереди ждут пополнения</translation>
-    </message>
-    <message>
-        <source>Gemini quota or credits exhausted — queued dictations will retry later</source>
-        <translation>Квота или баланс Gemini исчерпаны — диктовки из очереди повторятся позже</translation>
+        <source>%1 unavailable — try again later</source>
+        <translation>%1 недоступен — попробуйте позже</translation>
     </message>
     <message>
         <source>Retry queued — waiting for the current transcription</source>
         <translation>Повтор в очереди — жду текущее распознавание</translation>
-    </message>
-    <message>
-        <source>%1 unavailable — will retry automatically later</source>
-        <translation>%1 недоступен — повторю автоматически позже</translation>
     </message>
     <message>
         <source>%1 retry didn't work — the row has the details</source>
@@ -971,10 +951,6 @@ they're spelled right in every dictation.</source>
     <message>
         <source>Recovered your last dictation — it's in History</source>
         <translation>Последняя диктовка восстановлена — она в Истории</translation>
-    </message>
-    <message>
-        <source>Recovered your last dictation — copied and saved to History</source>
-        <translation>Последняя диктовка восстановлена — скопирована и сохранена в Историю</translation>
     </message>
     <message>
         <source>System default input</source>

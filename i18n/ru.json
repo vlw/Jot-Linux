@@ -399,5 +399,12 @@
   "3 months": "3 месяца",
   "6 months": "Полгода",
   "1 year": "1 год",
-  "Audio is needed for Retry. When a transcript expires, its whole History entry is deleted, audio included.": "Аудио нужно для повторного распознавания. Когда срок хранения текста истекает, удаляется вся запись Истории вместе с аудио."
+  "Audio is needed for Retry. When a transcript expires, its whole History entry is deleted, audio included.": "Аудио нужно для повторного распознавания. Когда срок хранения текста истекает, удаляется вся запись Истории вместе с аудио.",
+  "%1 unavailable — try again later": "%1 недоступен — попробуйте позже",
+  "Not transcribed": "Не распознано",
+  "API key problem — fix it in Settings → Advanced": "Проблема с ключом API — исправьте в Настройки → Дополнительно",
+  "Quota or credits exhausted": "Квота или баланс исчерпаны",
+  "No connection to the service": "Нет связи с сервисом",
+  "The service didn't answer in time": "Сервис не ответил вовремя",
+  "Interrupted — Jot was closed while dictating": "Прервано — Jot закрылся во время диктовки"
 }
