@@ -125,36 +125,22 @@ jobs:
             --bundle "${images[0]}.sigstore.json" \
             --signer-workflow "$GH_REPO/.github/workflows/appimage.yml" \
             --source-digest "$SOURCE_SHA"
-      - name: Publish release
+      - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           images=(dist/*.AppImage)
-          if [[ "$RELEASE_TAG" == "v1.0.0" ]]; then
-            release_intro="Первая версия Jot для Linux."
-          else
-            release_intro="Jot для Linux $RELEASE_TAG."
-          fi
-          cat > "$RUNNER_TEMP/release-notes.md" <<EOF
-          $release_intro
-
-          Диктовка через Gemini: удерживайте клавишу, говорите и отпускайте - распознанный текст появится в активном окне.
-
-          Приложение создано для KDE Plasma и Wayland. Поддерживает русский и английский интерфейс, историю диктовок и пользовательский словарь.
-
-          Для запуска скачайте AppImage из файлов ниже. Инструкции по настройке и проверке сборки - в README.
-          EOF
-          # Stage all assets before publishing; reruns can resume an incomplete draft.
+          # Only a draft with the verified assets: the release text is written and
+          # the release published by hand on GitHub. Reruns refresh the draft's
+          # assets and never touch a published release.
           if gh release view "$RELEASE_TAG" --json isDraft > "$RUNNER_TEMP/release-state.json"; then
             if ! jq -e '.isDraft' "$RUNNER_TEMP/release-state.json" >/dev/null; then
               echo "Release already published; preserving its assets."
               exit 0
             fi
           else
-            gh release create "$RELEASE_TAG" --verify-tag --draft \
-              --title "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" --notes ""
           fi
           gh release upload "$RELEASE_TAG" "${images[0]}" "${images[0]}.sha256" "${images[0]}.sigstore.json" --clobber
-          gh release edit "$RELEASE_TAG" --draft=false

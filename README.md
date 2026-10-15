@@ -16,16 +16,10 @@ sudo ./scripts/setup-permissions.sh    # один раз: доступ к кла
 Потом запусти **Jot** из меню приложений (или `jot-linux`). При первом запуске откроется онбординг:
 ключ Gemini → проверка микрофона → доступ к клавиатуре → выбор клавиши → жесты → «Try it».
 
-## AppImage и проверка сборки
+## Готовая сборка (AppImage)
 
-GitHub Actions собирает AppImage для x86_64 на каждом push в `main`, для тегов `v*`
-и pull request. Готовый файл и SHA-256 доступны в артефактах workflow **Verified AppImage**.
-При push тега `v*` после успешной проверки сборки AppImage автоматически публикуется
-в GitHub Releases вместе с SHA-256 и файлом `.sigstore.json`. Уже опубликованные
-релизы при повторном запуске сохраняются. Для публикации создай и отправь тег
-на коммит с этим workflow.
-
-Распакуй скачанный ZIP из Actions или скачай файлы релиза, затем:
+Скачайте `Jot-Linux-*.AppImage` и файл `.sha256` со страницы
+[Releases](https://github.com/vlw/Jot-Linux/releases/latest), затем:
 
 ```bash
 sha256sum --check Jot-Linux-*.AppImage.sha256
@@ -33,17 +27,15 @@ chmod +x Jot-Linux-*.AppImage
 ./Jot-Linux-*.AppImage
 ```
 
-Сборки из `main` и тегов получают подписанное GitHub подтверждение происхождения:
+Каждая сборка подписана GitHub и привязана к коммиту, из которого собрана. Проверить
+подпись можно так:
 
 ```bash
 gh attestation verify Jot-Linux-*.AppImage --repo vlw/Jot-Linux \
   --signer-workflow vlw/Jot-Linux/.github/workflows/appimage.yml
 ```
 
-CI проверяет зависимости внутри пакета и загрузку интерфейса из AppImage.
-Подтверждение связывает файл с коммитом и workflow; полный сценарий диктовки
-требует проверки на KDE Plasma / Wayland с микрофоном и API-ключом.
-Для глобальной клавиши по-прежнему требуется настройка доступа к клавиатуре:
+Чтобы работала глобальная клавиша диктовки, один раз выдайте доступ к клавиатуре:
 `sudo ./scripts/setup-permissions.sh` из исходников.
 
 ## Язык интерфейса
