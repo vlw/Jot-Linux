@@ -60,22 +60,25 @@ Item {
             onEdited: pane.query = text
         }
 
-        ColumnLayout {
+        Item {
             visible: (pane.dr, jot.dictionaryCount()) === 0
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 12
-            Item { Layout.fillHeight: true }
-            JIcon { name: "accessories-dictionary-symbolic"; size: 32; color: pane.theme.inkVariant; Layout.alignment: Qt.AlignHCenter }
-            Text { text: qsTr("Teach it your words"); font: pane.theme.title; color: pane.theme.ink; Layout.alignment: Qt.AlignHCenter }
-            Text {
-                text: qsTr("Names, jargon, product terms — add them once,\nthey're spelled right in every dictation.")
-                horizontalAlignment: Text.AlignHCenter
-                font: pane.theme.body
-                color: pane.theme.inkVariant
-                Layout.alignment: Qt.AlignHCenter
+            Column {
+                anchors.centerIn: parent
+                width: parent.width - 48
+                spacing: 12
+                JIcon { name: "accessories-dictionary-symbolic"; size: 32; color: pane.theme.inkVariant; anchors.horizontalCenter: parent.horizontalCenter }
+                Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; text: qsTr("Teach it your words"); font: pane.theme.title; color: pane.theme.ink }
+                Text {
+                    width: parent.width
+                    text: qsTr("Names, jargon, product terms — add them once,\nthey're spelled right in every dictation.")
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                    font: pane.theme.body
+                    color: pane.theme.inkVariant
+                }
             }
-            Item { Layout.fillHeight: true }
         }
 
         ListView {

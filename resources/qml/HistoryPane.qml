@@ -118,23 +118,25 @@ Item {
         }
 
         // ---- empty
-        ColumnLayout {
+        Item {
             visible: pane.records.length === 0
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 16
-            Item { Layout.fillHeight: true }
-            Row {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 5
-                Repeater {
-                    model: [18, 30, 24, 14]
-                    Rectangle { width: 6; height: modelData; radius: 3; color: pane.theme.brandQuad[index]; anchors.verticalCenter: parent.verticalCenter }
+            Column {
+                anchors.centerIn: parent
+                width: parent.width - 48
+                spacing: 16
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 5
+                    Repeater {
+                        model: [18, 30, 24, 14]
+                        Rectangle { width: 6; height: modelData; radius: 3; color: pane.theme.brandQuad[index]; anchors.verticalCenter: parent.verticalCenter }
+                    }
                 }
+                Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; text: jot.historyAvailable() ? qsTr("Nothing here yet") : qsTr("History unavailable"); font: pane.theme.title; color: pane.theme.ink }
+                Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap; text: qsTr("Hold %1 and say hello.").arg(jot.hotkeyName()); font: pane.theme.body; color: pane.theme.inkVariant }
             }
-            Text { text: jot.historyAvailable() ? qsTr("Nothing here yet") : qsTr("History unavailable"); font: pane.theme.title; color: pane.theme.ink; Layout.alignment: Qt.AlignHCenter }
-            Text { text: qsTr("Hold %1 and say hello.").arg(jot.hotkeyName()); font: pane.theme.body; color: pane.theme.inkVariant; Layout.alignment: Qt.AlignHCenter }
-            Item { Layout.fillHeight: true }
         }
 
         // ---- list
