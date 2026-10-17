@@ -87,9 +87,12 @@ QString DictationController::readyLine() const
 bool DictationController::needsOnboarding() const
 {
     // A deliberate "I'll add it later" is remembered — the wizard must not re-trap that user.
+    // A missing microphone only matters before setup: at login PipeWire publishes devices a
+    // moment after autostart, and an unplugged mic is reported in the tray, not by the wizard.
     auto &s = Settings::instance();
-    return (!s.hasSelectedAPIKey() && !s.hasCompletedOnboarding())
-        || (!s.hasCompletedOnboarding() && !HotkeyEngine::instance().evdevAvailable() && s.hotkeyBackend() != "portal")
+    if (s.hasCompletedOnboarding()) return false;
+    return !s.hasSelectedAPIKey()
+        || (!HotkeyEngine::instance().evdevAvailable() && s.hotkeyBackend() != "portal")
         || !MicrophoneManager::instance().recordingDevice();
 }
 
